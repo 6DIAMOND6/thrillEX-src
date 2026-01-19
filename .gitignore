@@ -1,0 +1,17 @@
+*.obj
+*.sbr
+*.plg
+*.opt
+*.pdb
+*.pch
+*.exp
+*.ilk
+*.idb
+*.map
+*.bsc
+*.ncb
+*.dll
+*.exe
+/dlls/.vs
+*.log
+*.txt
