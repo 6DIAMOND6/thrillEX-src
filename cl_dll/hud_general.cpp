@@ -16,6 +16,13 @@
 //	alpha hud.
 //	1.18.26: Added Quake hud, ammo &
 //	health fades. Finished Alpha hud.
+//	
+//	JAN-21-26: Redid how HUD sprites are
+//	loaded slightly to avoid WON's 128
+//	sprite precache limit. Also added a
+//	proper clip & ammo display for QHUD
+//	that doesn't use that weird console 
+//	font thing I threw together...
 //
 //	TODO JAN-18-26 : Make HUD display
 //	properly at resolutions below 640x
@@ -62,129 +69,84 @@ int CHudGeneral::Init(void)
 
 void CHudGeneral::Quake_VidInit(void)
 {
-	m_hSBar[0] = gHUD.GetSprite( gHUD.GetSpriteIndex( "sbar" ) );
-	m_hSBar[1] = gHUD.GetSprite( gHUD.GetSpriteIndex( "ibar" ) );
-	m_hArmor	= gHUD.GetSprite( gHUD.GetSpriteIndex( "suit" ) );
+	m_hSBar[0]		= gHUD.GetSpriteIndex( "sbar" );
+	m_hSBar[1]		= gHUD.GetSpriteIndex( "ibar" );
+	m_hSBar[2]		= gHUD.GetSpriteIndex( "scorebar" );
+	m_hSBar[3]		= gHUD.GetSpriteIndex( "clipbar" );
+	m_hArmor		= gHUD.GetSpriteIndex( "suit" );
+
+	m_gHUD_num_0[0]			= gHUD.GetSpriteIndex( "num_0" );
+	m_gHUD_anum_0[0]		= gHUD.GetSpriteIndex( "anum_0" );
 
 	for ( int j = 0; j < 5; j++ )
 	{
-		m_hFace[j][0] = gHUD.GetSprite( gHUD.GetSpriteIndex(va("face%d", j + 1)) ); // Normal
-		m_hFace[j][1] = gHUD.GetSprite( gHUD.GetSpriteIndex(va("face_p%d", j + 1)) ); // Pain
+		m_hFace[j][0] = gHUD.GetSpriteIndex( va( "face%d", j + 1 ) );
+		m_hFace[j][1] = gHUD.GetSpriteIndex( va( "face_p%d", j + 1 ) );
 	}
 }
 
 void CHudGeneral::Alpha_VidInit(void)
 {
-	int iAlphaBars[4];
-	int iAlphaTint[4];
-
 	// 0 - Bottom left
 	// 1 - Bottom Right
 	// 2 - Middle Right
 	// 3 - Top Left
 
-	iAlphaBars[0]	= gHUD.GetSpriteIndex( "bar_btm_lf" );
-	iAlphaBars[1]	= gHUD.GetSpriteIndex( "bar_btm_rt" );
-	iAlphaBars[2]	= gHUD.GetSpriteIndex( "bar_mid_rt" );
-	iAlphaBars[3]	= gHUD.GetSpriteIndex( "bar_up_lf" );
+	m_hAlphaBars[0]		= gHUD.GetSprite(gHUD.GetSpriteIndex("bar_btm_lf"));
+	m_hAlphaBars[1]		= gHUD.GetSprite(gHUD.GetSpriteIndex("bar_btm_rt"));
+	m_hAlphaBars[2]		= gHUD.GetSprite(gHUD.GetSpriteIndex("bar_mid_rt"));
+	m_hAlphaBars[3]		= gHUD.GetSprite(gHUD.GetSpriteIndex("bar_up_lf"));
 
-	iAlphaTint[0]	= gHUD.GetSpriteIndex( "tint_btm_lf" );
-	iAlphaTint[1]	= gHUD.GetSpriteIndex( "tint_btm_rt" );
-	iAlphaTint[2]	= gHUD.GetSpriteIndex( "tint_mid_rt" );
-	iAlphaTint[3]	= gHUD.GetSpriteIndex( "tint_up_lf" );
-
-	m_hAlphaBars[0] = gHUD.GetSprite( iAlphaBars[0] );
-	m_hAlphaBars[1] = gHUD.GetSprite( iAlphaBars[1] );
-	m_hAlphaBars[2] = gHUD.GetSprite( iAlphaBars[2] );
-	m_hAlphaBars[3] = gHUD.GetSprite( iAlphaBars[3] );
-
-	m_hAlphaTints[0]	= gHUD.GetSprite( iAlphaTint[0] );
-	m_hAlphaTints[1]	= gHUD.GetSprite( iAlphaTint[1] );
-	m_hAlphaTints[2]	= gHUD.GetSprite( iAlphaTint[2] );
-	m_hAlphaTints[3]	= gHUD.GetSprite( iAlphaTint[3] );
-
-	wrect_t rcSprite;
+	m_hAlphaTints[0]	= gHUD.GetSprite(gHUD.GetSpriteIndex("tint_btm_lf"));
+	m_hAlphaTints[1]	= gHUD.GetSprite(gHUD.GetSpriteIndex("tint_btm_rt"));
+	m_hAlphaTints[2]	= gHUD.GetSprite(gHUD.GetSpriteIndex("tint_mid_rt"));
+	m_hAlphaTints[3]	= gHUD.GetSprite(gHUD.GetSpriteIndex("tint_up_lf"));
 
 	for ( int i = 0; i < 4; i++ )
 	{
-		rcSprite = gHUD.GetSpriteRect(iAlphaBars[i]);
-
-		m_iAlphaWidth[i] = rcSprite.right - rcSprite.left;
-		m_iAlphaHeight[i] = rcSprite.bottom - rcSprite.top;
+		m_iAlphaWidth[i] = SPR_Width(m_hAlphaBars[i], 0);
+		m_iAlphaHeight[i] = SPR_Height(m_hAlphaBars[i], 0);
 	}
 }
 
 int CHudGeneral::VidInit(void)
 {
+	Quake_VidInit();
+	Alpha_VidInit();
+
+	m_iHealthFade = 0;
+	m_iAmmoFade = 0;
+
 	// Reset "CShift"
 	m_flScreenTint[0] = 0.0f;
 	m_flScreenTint[1] = 0.0f;
 	m_flScreenTint[2] = 0.0f;
 	m_flScreenTint[3] = 0.0f;
 
-	int iIndex_Divider[2];
-	int iIndex_EmptyBat[2];
-	int iIndex_FullBat[2];
-	wrect_t rcSprite;
+	m_gHUD_num_0[2]			= gHUD.GetSpriteIndex( "Hud1_Num0" );
+	m_gHUD_num_0[3]			= gHUD.GetSpriteIndex( "Hud2_Num0" );
 
-	// Divider
+	m_gHUD_anum_0[2]		= gHUD.GetSpriteIndex( "Hud1_ANum0" );
+	m_gHUD_anum_0[3]		= gHUD.GetSpriteIndex( "Hud2_ANum0" );
 
-	iIndex_Divider[0]	= gHUD.GetSpriteIndex( "Hud1_Divider" ); // P.F
-	iIndex_Divider[1]	= gHUD.GetSpriteIndex( "Hud2_Divider" ); // Green
+	m_gHUD_battery_empty[0]	= gHUD.GetSpriteIndex("Hud1_Battery_Empty");
+	m_gHUD_battery_empty[1]	= gHUD.GetSpriteIndex("Hud2_Battery_Empty");
 
-	m_hDivider[0]		= gHUD.GetSprite(iIndex_Divider[0]);
-	m_hDivider[1]		= gHUD.GetSprite(iIndex_Divider[1]);
+	m_gHUD_battery_full[0]	= gHUD.GetSpriteIndex("Hud1_Battery_Full");
+	m_gHUD_battery_full[1]	= gHUD.GetSpriteIndex("Hud2_Battery_Full");
 
-	// Battery
+	m_gHUD_divider[0]		= gHUD.GetSpriteIndex("Hud1_Divider");
+	m_gHUD_divider[1]		= gHUD.GetSpriteIndex("Hud2_Divider");
 
-	iIndex_EmptyBat[0]	= gHUD.GetSpriteIndex( "Hud1_Battery_Empty" ); // P.F
-	iIndex_EmptyBat[1]	= gHUD.GetSpriteIndex( "Hud2_Battery_Empty" ); // Green
+	m_rcBatFull				= &gHUD.GetSpriteRect(m_gHUD_battery_full[0]);
 
-	iIndex_FullBat[0]	= gHUD.GetSpriteIndex( "Hud1_Battery_Full" ); // P.F
-	iIndex_FullBat[1]	= gHUD.GetSpriteIndex( "Hud2_Battery_Full" ); // Green
+	m_iBatWidth = gHUD.GetSpriteRect(m_gHUD_battery_empty[0]).right - gHUD.GetSpriteRect(m_gHUD_battery_empty[0]).left;
+	m_iBatHeight = gHUD.GetSpriteRect(m_gHUD_battery_empty[0]).bottom - gHUD.GetSpriteRect(m_gHUD_battery_empty[0]).top;
 
-	m_hBatEmpty[0]		= gHUD.GetSprite(iIndex_EmptyBat[0]);
-	m_hBatEmpty[1]		= gHUD.GetSprite(iIndex_EmptyBat[1]);
+	m_iANumWidth[1] = gHUD.GetSpriteRect(m_gHUD_anum_0[3]).right - gHUD.GetSpriteRect(m_gHUD_anum_0[3]).left;
+	m_iANumHeight[1] = gHUD.GetSpriteRect(m_gHUD_anum_0[3]).bottom - gHUD.GetSpriteRect(m_gHUD_anum_0[3]).top;
+	m_iNumHeight[1] = gHUD.GetSpriteRect(m_gHUD_num_0[3]).bottom - gHUD.GetSpriteRect(m_gHUD_num_0[3]).top;
 
-	m_hBatFull[0]		= gHUD.GetSprite(iIndex_FullBat[0]);
-	m_hBatFull[1]		= gHUD.GetSprite(iIndex_FullBat[1]);
-
-	m_rcBatFull			= &gHUD.GetSpriteRect(iIndex_EmptyBat[0]);
-	m_iBatFullWidth		= m_rcBatFull->right - m_rcBatFull->left;
-
-	m_iBatWidth			= SPR_Width(gHUD.GetSprite(iIndex_EmptyBat[0]), 0);
-	m_iBatHeight		= SPR_Height(gHUD.GetSprite(iIndex_EmptyBat[0]), 0);
-
-	// Numbers
-
-	m_gHUD_num0[0]		= gHUD.GetSpriteIndex( "num_0" ); // Quake
-	m_gHUD_num0[1]		= gHUD.GetSpriteIndex( "Hud1_Num0" ); // Alpha
-	m_gHUD_num0[2]		= gHUD.GetSpriteIndex( "Hud1_Num0" ); // P.F
-	m_gHUD_num0[3]		= gHUD.GetSpriteIndex( "Hud2_Num0" ); // Green
-
-	m_gHUD_anum0[0]		= gHUD.GetSpriteIndex( "anum_0" ); // Quake
-	m_gHUD_anum0[1]		= gHUD.GetSpriteIndex( "Hud1_ANum0" ); // Alpha
-	m_gHUD_anum0[2]		= gHUD.GetSpriteIndex( "Hud1_ANum0" ); // P.F
-	m_gHUD_anum0[3]		= gHUD.GetSpriteIndex( "Hud2_ANum0" ); // Green
-
-	for ( int i = 0; i < 4; i++ )
-	{
-		rcSprite = gHUD.GetSpriteRect(m_gHUD_num0[i]);
-
-		m_iNumWidth[i]		= rcSprite.right - rcSprite.left;
-		m_iNumHeight[i]		= rcSprite.bottom - rcSprite.top;
-
-		rcSprite = gHUD.GetSpriteRect(m_gHUD_anum0[i]);
-
-		m_iANumWidth[i]		= rcSprite.right - rcSprite.left;
-		m_iANumHeight[i]	= rcSprite.bottom - rcSprite.top;
-	}
-
-	Quake_VidInit();
-	Alpha_VidInit();
-
-	m_iHealthFade = 0;
-	m_iAmmoFade = 0;
 
 	return 1;
 }
@@ -232,11 +194,15 @@ void CHudGeneral::DrawQuakeFace(int x, int y)
 		m_iHealth = 0;
 
 	if (m_flFacePainTime >= gHUD.m_flTime)
-		SPR_Set(m_hFace[m_iHealth][1], 255, 255, 255);
+	{
+		SPR_Set(gHUD.GetSprite(m_hFace[m_iHealth][1]), 255, 255, 255);
+		SPR_DrawHoles(0, x, y, &gHUD.GetSpriteRect(m_hFace[m_iHealth][1]));
+	}
 	else
-		SPR_Set(m_hFace[m_iHealth][0], 255, 255, 255);
-
-	SPR_DrawHoles(0, x, y, NULL);
+	{
+		SPR_Set(gHUD.GetSprite(m_hFace[m_iHealth][0]), 255, 255, 255);
+		SPR_DrawHoles(0, x, y, &gHUD.GetSpriteRect(m_hFace[m_iHealth][0]));
+	}
 }
 
 //=========================
@@ -251,6 +217,9 @@ void CHudGeneral::DrawQuakeHud(void)
 	int iSize = SCR_GetViewSize();
 	int x, y;
 	int iFlags = DHN_3DIGITS | DHN_HOLES | DHN_NOLZERO | DHN_DRAWZERO;
+	int r, g, b, a;
+
+	r = 255; g = 156; b = 39; a = 255;
 
 	if (iSize > 140)
 	{
@@ -272,8 +241,8 @@ void CHudGeneral::DrawQuakeHud(void)
 		x = (gHUD.m_iHudScaleWidth * 0.5f) - 160;
 		y = gHUD.m_iHudScaleHeight - 48;
 
-		SPR_Set(m_hSBar[1], 255, 255, 255);
-		SPR_DrawHoles(0, x, y, NULL);
+		SPR_Set(gHUD.GetSprite(m_hSBar[1]), 255, 255, 255);
+		SPR_DrawHoles(0, x, y, &gHUD.GetSpriteRect(m_hSBar[1]));
 	}
 
 	if ( iSize < 120 || iSize > 120 )
@@ -290,8 +259,8 @@ void CHudGeneral::DrawQuakeHud(void)
 		x = (gHUD.m_iHudScaleWidth * 0.5f) - 160;
 		y = gHUD.m_iHudScaleHeight - 24;
 
-		SPR_Set(m_hSBar[0], 255, 255, 255);
-		SPR_DrawHoles(0, x, y, NULL);
+		SPR_Set(gHUD.GetSprite(m_hSBar[0]), 255, 255, 255);
+		SPR_DrawHoles(0, x, y, &gHUD.GetSpriteRect(m_hSBar[0]));
 
 		int iHealth = gHUD.m_Health.m_iHealth;
 		int iBat = gHUD.m_Health.m_iBat;
@@ -299,11 +268,12 @@ void CHudGeneral::DrawQuakeHud(void)
 		// Battery.
 
 		x = (gHUD.m_iHudScaleWidth * 0.5f) - 160;
-		SPR_Set(m_hArmor, 255, 255, 255);
-		SPR_DrawHoles(0, x, y, NULL);
+
+		SPR_Set(gHUD.GetSprite(m_hArmor), 255, 255, 255);
+		SPR_DrawHoles(0, x, y, &gHUD.GetSpriteRect(m_hArmor));
 
 		x = (gHUD.m_iHudScaleWidth * 0.5f) - 160 + 24;
-		gHUD.DrawHudNumber(x, y, iFlags, iBat, 255, 255, 255, 255, iBat <= 25 ? m_gHUD_anum0[0] : m_gHUD_num0[0]);
+		gHUD.DrawHudNumber(x, y, iFlags, iBat, 255, 255, 255, 255, (iBat <= 25) ? m_gHUD_anum_0[0] : m_gHUD_num_0[0]);
 
 		// Health.
 
@@ -311,7 +281,7 @@ void CHudGeneral::DrawQuakeHud(void)
 		DrawQuakeFace(x, y);
 
 		x = (gHUD.m_iHudScaleWidth * 0.5f) - 160 + 136;
-		gHUD.DrawHudNumber(x, y, iFlags, iHealth, 255, 255, 255, 255, iHealth <= 25 ? m_gHUD_anum0[0] : m_gHUD_num0[0]);
+		gHUD.DrawHudNumber(x, y, iFlags, iHealth, 255, 255, 255, 255, (iHealth <= 25) ? m_gHUD_anum_0[0] : m_gHUD_num_0[0]);
 
 		// Ammo.
 		if (gHUD.m_Ammo.m_pWeapon)
@@ -322,39 +292,47 @@ void CHudGeneral::DrawQuakeHud(void)
 			{
 				x = (gHUD.m_iHudScaleWidth * 0.5f) - 160 + 248;
 				y = gHUD.m_iHudScaleHeight - 24;
-				gHUD.DrawHudNumber(x, y, iFlags, 0, 255, 255, 255, 255, m_gHUD_anum0[0]);
+				gHUD.DrawHudNumber(x, y, iFlags, 0, 255, 255, 255, 255, m_gHUD_anum_0[0]);
 				return;
 			}
 
 			// Does weapon have any ammo at all?
 			if (pw->iAmmoType >= 0)
 			{
-				if ( pw->hQuakeIcon )
-				{
-					x = (gHUD.m_iHudScaleWidth * 0.5f) - 160 + 224;
-					y = gHUD.m_iHudScaleHeight - 24;
-					SPR_Set( pw->hQuakeIcon, 255, 255, 255 );
-					SPR_DrawHoles( 0, x, y, NULL );
-				}
+				x = (gHUD.m_iHudScaleWidth * 0.5f) - 160 + 224;
+				y = gHUD.m_iHudScaleHeight - 24;
 
 				if (pw->iClip >= 0)
 				{
-					int iTextHeight, iTextWidth;
+					int iClipWidth;
+					int iAmmoWidth;
 
-					GetConsoleStringSize("0", &iTextWidth, &iTextHeight);
+					iClipWidth = 50 * ((float)pw->iClip / (float)pw->iMaxClip);
+					iAmmoWidth = 50 * ((float)gWR.CountAmmo(pw->iAmmoType) / (float)pw->iMax1);
 
-					x = (gHUD.m_iHudScaleWidth * 0.5f) - 160 + 248;
-					y = gHUD.m_iHudScaleHeight - iTextHeight;	
-					TRI_DrawConsoleString(x, y, va("%d", gWR.CountAmmo(pw->iAmmoType)), iTextWidth, iTextHeight);
+					SPR_Set(gHUD.GetSprite(m_hSBar[3]), 255, 255, 255);
+					SPR_DrawHoles(0, x, y, &gHUD.GetSpriteRect(m_hSBar[3]));
 
-					y = gHUD.m_iHudScaleHeight - 24;
-					gHUD.DrawHudNumber(x, y, iFlags, pw->iClip, 255, 255, 255, 255, pw->iClip <= 10 ? m_gHUD_anum0[0] : m_gHUD_num0[0]);
+					SPR_Set( pw->hQuakeIcon, 255, 255, 255 );
+					SPR_DrawHoles( 0, x, y, NULL );
+
+					x = (gHUD.m_iHudScaleWidth * 0.5f) - 160 + 254;
+					y = gHUD.m_iHudScaleHeight - 18;
+					FillRGBA(x, y, iClipWidth, 5, r, g, b, a, 0);
+
+					y = gHUD.m_iHudScaleHeight - 9;
+					FillRGBA(x, y, iAmmoWidth, 5, r, g, b, a, 0);
+
 				}
 				else
 				{
+									SPR_Set( pw->hQuakeIcon, 255, 255, 255 );
+				SPR_DrawHoles( 0, x, y, NULL );
+
 					x = (gHUD.m_iHudScaleWidth * 0.5f) - 160 + 248;
 					y = gHUD.m_iHudScaleHeight - 24;
-					gHUD.DrawHudNumber(x, y, iFlags, gWR.CountAmmo(pw->iAmmoType), 255, 255, 255, 255, gWR.CountAmmo(pw->iAmmoType) <= 10 ? m_gHUD_anum0[0] : m_gHUD_num0[0]);
+					gHUD.DrawHudNumber(x, y, iFlags, gWR.CountAmmo(pw->iAmmoType), 255, 255, 255, 255, 
+						(gWR.CountAmmo(pw->iAmmoType) <= 10) ? m_gHUD_anum_0[0] : m_gHUD_num_0[0]);
 				}
 			}
 
@@ -363,17 +341,15 @@ void CHudGeneral::DrawQuakeHud(void)
 			{
 				if ((pw->iAmmo2Type != 0) && (gWR.CountAmmo(pw->iAmmo2Type) >= 0) && (iSize < 110 || iSize > 130))
 				{
-					if ( pw->hQuakeIcon2 )
-					{
-						x = (gHUD.m_iHudScaleWidth * 0.5f) - 160 + 224;
-						y = gHUD.m_iHudScaleHeight - 48;
-						SPR_Set( pw->hQuakeIcon2, 255, 255, 255 );
-						SPR_DrawHoles( 0, x, y, NULL );
-					}
+					x = (gHUD.m_iHudScaleWidth * 0.5f) - 160 + 224;
+					y = gHUD.m_iHudScaleHeight - 48;
+					SPR_Set( pw->hQuakeIcon2, 255, 255, 255 );
+					SPR_DrawHoles( 0, x, y, NULL );
 
 					x = (gHUD.m_iHudScaleWidth * 0.5f) - 160 + 248;
 					y = gHUD.m_iHudScaleHeight - 48;
-					gHUD.DrawHudNumber(x, y, iFlags, gWR.CountAmmo(pw->iAmmo2Type), 255, 255, 255, 255, gWR.CountAmmo(pw->iAmmoType) <= 10 ? m_gHUD_anum0[0] : m_gHUD_num0[0]);
+					gHUD.DrawHudNumber(x, y, iFlags, gWR.CountAmmo(pw->iAmmo2Type), 255, 255, 255, 255, 
+						(gWR.CountAmmo(pw->iAmmo2Type) <= 10) ? m_gHUD_anum_0[0] : m_gHUD_num_0[0]);
 				}
 			}
 		}
@@ -381,7 +357,7 @@ void CHudGeneral::DrawQuakeHud(void)
 		{
 			x = (gHUD.m_iHudScaleWidth * 0.5f) - 160 + 248;
 			y = gHUD.m_iHudScaleHeight - 24;
-			gHUD.DrawHudNumber(x, y, iFlags, 0, 255, 255, 255, 255, m_gHUD_anum0[0]);
+			gHUD.DrawHudNumber(x, y, iFlags, 0, 255, 255, 255, 255, m_gHUD_anum_0[0]);
 		}
 	}
 }
@@ -408,7 +384,7 @@ void CHudGeneral::DrawBasicQuakeHud(void)
 	DrawQuakeFace(x, y);
 
 	x += 24;
-	gHUD.DrawHudNumber(x, y, iFlags, iHealth, 255, 255, 255, 255, iHealth <= 25 ? m_gHUD_anum0[0] : m_gHUD_num0[0]);
+	gHUD.DrawHudNumber(x, y, iFlags, iHealth, 255, 255, 255, 255, (iHealth <= 25) ? m_gHUD_anum_0[0] : m_gHUD_num_0[0]);
 
 	// Battery.
 
@@ -416,10 +392,10 @@ void CHudGeneral::DrawBasicQuakeHud(void)
 	y -= 24 + 2;
 
 	SPR_Set(m_hArmor, 255, 255, 255);
-	SPR_DrawHoles(0, x, y, NULL);
+	SPR_DrawHoles(0, x, y, &gHUD.GetSpriteRect(m_hArmor));
 
 	x += 24;
-	gHUD.DrawHudNumber(x, y, iFlags, iBat, 255, 255, 255, 255, iBat <= 25 ? m_gHUD_anum0[0] : m_gHUD_num0[0]);
+	gHUD.DrawHudNumber(x, y, iFlags, iBat, 255, 255, 255, 255, (iBat <= 25) ? m_gHUD_anum_0[0] : m_gHUD_num_0[0]);
 
 	// Ammo.
 	if (gHUD.m_Ammo.m_pWeapon)
@@ -435,24 +411,24 @@ void CHudGeneral::DrawBasicQuakeHud(void)
 			x = gHUD.m_iHudScaleWidth - 20 - 24;
 			y = gHUD.m_iHudScaleHeight - 24 - 8;
 
-			if ( pw->hQuakeIcon )
-			{
+			//if ( pw->hQuakeIcon )
+			//{
 				SPR_Set( pw->hQuakeIcon, 255, 255, 255 );
 				SPR_DrawHoles( 0, x, y, NULL );
-			}
+			//}
 
 			if (pw->iClip >= 0)
 			{
 				x -= 24 * 3;
-				gHUD.DrawHudNumber(x, y, iFlags, gWR.CountAmmo(pw->iAmmoType), 255, 255, 255, 255, gWR.CountAmmo(pw->iAmmoType) <= 10 ? m_gHUD_anum0[0] : m_gHUD_num0[0]);
+				gHUD.DrawHudNumber(x, y, iFlags, gWR.CountAmmo(pw->iAmmoType), 255, 255, 255, 255, (gWR.CountAmmo(pw->iAmmoType) <= 10) ? m_gHUD_anum_0[0] : m_gHUD_num_0[0]);
 
 				x -= 24 * 4;
-				gHUD.DrawHudNumber(x, y, iFlags, pw->iClip, 255, 255, 255, 255, pw->iClip <= 10 ? m_gHUD_anum0[0] : m_gHUD_num0[0]);
+				gHUD.DrawHudNumber(x, y, iFlags, pw->iClip, 255, 255, 255, 255, (pw->iClip <= 10) ? m_gHUD_anum_0[0] : m_gHUD_num_0[0]);
 			}
 			else
 			{
 				x -= 24 * 3;
-				gHUD.DrawHudNumber(x, y, iFlags, gWR.CountAmmo(pw->iAmmoType), 255, 255, 255, 255, gWR.CountAmmo(pw->iAmmoType) <= 10 ? m_gHUD_anum0[0] : m_gHUD_num0[0]);
+				gHUD.DrawHudNumber(x, y, iFlags, gWR.CountAmmo(pw->iAmmoType), 255, 255, 255, 255, (gWR.CountAmmo(pw->iAmmoType) <= 10) ? m_gHUD_anum_0[0] : m_gHUD_num_0[0]);
 			}
 		}
 
@@ -464,14 +440,14 @@ void CHudGeneral::DrawBasicQuakeHud(void)
 				x = gHUD.m_iHudScaleWidth - 20 - 24;
 				y -= 24 + 2;
 
-				if ( pw->hQuakeIcon2 )
-				{
+				//if ( pw->hQuakeIcon2 )
+				//{
 					SPR_Set( pw->hQuakeIcon2, 255, 255, 255 );
 					SPR_DrawHoles( 0, x, y, NULL );
-				}
+				//}
 				
 				x -= 24 * 3;
-				gHUD.DrawHudNumber(x, y, iFlags, gWR.CountAmmo(pw->iAmmo2Type), 255, 255, 255, 255, gWR.CountAmmo(pw->iAmmoType) <= 10 ? m_gHUD_anum0[0] : m_gHUD_num0[0]);
+				gHUD.DrawHudNumber(x, y, iFlags, gWR.CountAmmo(pw->iAmmo2Type), 255, 255, 255, 255, (gWR.CountAmmo(pw->iAmmo2Type) <= 10) ? m_gHUD_anum_0[0] : m_gHUD_num_0[0]);
 			}
 		}
 	}
@@ -759,18 +735,17 @@ void CHudGeneral::DrawAlphaHud(void)
 // DrawGreenHud
 //=========================
 
-#define MIN_AMMO_ALPHA		240
+#define MIN_AMMO_ALPHA		224
 #define MIN_HEALTH_ALPHA	144
+#define MIN_HEALTH_ALPHA_1	128
 
 void CHudGeneral::DrawGreenHud(void)
 {
-	if (!m_pCvarHudStyle)
-		return;
-
-	int iIndex_Num = (m_pCvarHudStyle->value == 3) ? 3 : 2;
-	int iIndex_DivBat = (m_pCvarHudStyle->value == 3) ? 1 : 0;
 	int iFlags = DHN_3DIGITS | DHN_DRAWZERO;
 	int x, y, r, g, b, a;
+
+	int iNum = (m_pCvarHudStyle->value == 3) ? 3 : 2;
+	int iBat = (m_pCvarHudStyle->value == 3) ? 1 : 0;
 	int iSize = SCR_GetViewSize();
 
 	wrect_t rc;
@@ -781,13 +756,19 @@ void CHudGeneral::DrawGreenHud(void)
 	// Health display.
 
 	x = 14;
-	y = gHUD.m_iHudScaleHeight - m_iNumHeight[iIndex_Num] - 20;
-	a = max(m_iHealthFade - (gHUD.m_flTimeDelta * 20), MIN_HEALTH_ALPHA);
+	y = gHUD.m_iHudScaleHeight - m_iNumHeight[1] - 20;
+
+	if (m_pCvarHudStyle->value == 2)
+		a = max(m_iHealthFade, MIN_HEALTH_ALPHA);
+	else
+		a = max(m_iHealthFade, MIN_HEALTH_ALPHA_1);
+
+	m_iHealthFade = max(m_iHealthFade - (gHUD.m_flTimeDelta * 5), 0);
 
 	gHUD.m_Health.GetPainColor(r, g, b);
 
 	if (iSize < 150)
-		gHUD.DrawHudNumber(x, y, iFlags, gHUD.m_Health.m_iHealth, r, g, b, a, m_gHUD_num0[iIndex_Num]);
+		gHUD.DrawHudNumber(x, y, iFlags, gHUD.m_Health.m_iHealth, r, g, b, a, m_gHUD_num_0[iNum]);
 
 	// Battery display.
 
@@ -797,8 +778,8 @@ void CHudGeneral::DrawGreenHud(void)
 
 		ScaleColors(r, g, b, a);
 
-		SPR_Set(m_hBatEmpty[iIndex_DivBat], r, g, b);
-		SPR_DrawAdditive(0, x, y, NULL);
+		SPR_Set(gHUD.GetSprite(m_gHUD_battery_empty[iBat]), r, g, b);
+		SPR_DrawAdditive(0, x, y, &gHUD.GetSpriteRect(m_gHUD_battery_empty[iBat]));
 
 		if (m_pCvarHudStyle->value == 3)
 		{
@@ -813,7 +794,7 @@ void CHudGeneral::DrawGreenHud(void)
 
 		if (rc.right > rc.left)
 		{
-			SPR_Set(m_hBatFull[iIndex_DivBat], r, g, b);
+			SPR_Set(gHUD.GetSprite(m_gHUD_battery_full [iBat] ), r, g, b);
 			SPR_DrawAdditive(0, x, y, &rc);
 		}
 	}
@@ -822,14 +803,16 @@ void CHudGeneral::DrawGreenHud(void)
 
 	if (iSize < 140)
 	{
-		x = gHUD.m_iHudScaleWidth - (m_iANumWidth[iIndex_Num] * 3) - 16;
-		y = gHUD.m_iHudScaleHeight - m_iANumHeight[iIndex_Num] - 33;
-		a = max(m_iAmmoFade - (gHUD.m_flTimeDelta * 20), MIN_AMMO_ALPHA);
+		x = gHUD.m_iHudScaleWidth - (m_iANumWidth[1] * 3) - 16;
+		y = gHUD.m_iHudScaleHeight - m_iANumHeight[1] - 33;
+
+		a = max(m_iAmmoFade, MIN_AMMO_ALPHA);
+		m_iAmmoFade = max(m_iAmmoFade - (gHUD.m_flTimeDelta * 5), 0);
 
 		if (!gHUD.m_Ammo.m_pWeapon)
 		{
 			UnpackRGB(r, g, b, RGB_GREENISH);
-			gHUD.DrawHudNumber(x, y, iFlags, 255, r, g, b, a, m_gHUD_anum0[iIndex_Num]);
+			gHUD.DrawHudNumber(x, y, iFlags, 255, r, g, b, 255, m_gHUD_anum_0[iNum]);
 			return;
 		}
 
@@ -839,7 +822,7 @@ void CHudGeneral::DrawGreenHud(void)
 		if ((pw->iAmmoType < 0) && (pw->iAmmo2Type < 0))
 		{
 			UnpackRGB(r, g, b, RGB_GREENISH);
-			gHUD.DrawHudNumber(x, y, iFlags, 255, r, g, b, a, m_gHUD_anum0[iIndex_Num]);
+			gHUD.DrawHudNumber(x, y, iFlags, 255, r, g, b, 255, m_gHUD_anum_0[iNum]);
 			return;
 		}
 
@@ -849,23 +832,23 @@ void CHudGeneral::DrawGreenHud(void)
 			if (pw->iClip >= 0)
 			{
 				UnpackRGB(r, g, b, RGB_GREENISH);
-				gHUD.DrawHudNumber(x, y, iFlags, gWR.CountAmmo(pw->iAmmoType), r, g, b, a, m_gHUD_anum0[iIndex_Num]);
+				gHUD.DrawHudNumber(x, y, iFlags, gWR.CountAmmo(pw->iAmmoType), r, g, b, a, m_gHUD_anum_0[iNum]);
 
-				x -= m_iANumWidth[iIndex_Num];
+				x -= m_iANumWidth[1];
 				
 				ScaleColors(r, g, b, a);
-				SPR_Set(m_hDivider[iIndex_DivBat], r, g, b);
-				SPR_DrawAdditive(0, x, y, NULL);
+				SPR_Set(gHUD.GetSprite(m_gHUD_divider[iBat]), r, g, b);
+				SPR_DrawAdditive(0, x, y, &gHUD.GetSpriteRect(m_gHUD_divider[iBat]));
 
-				x -= m_iANumWidth[iIndex_Num] * 3;
+				x -= m_iANumWidth[1] * 3;
 
 				UnpackRGB(r, g, b, RGB_GREENISH);
-				gHUD.DrawHudNumber(x, y, iFlags, pw->iClip, r, g, b, a, m_gHUD_anum0[iIndex_Num]);
+				gHUD.DrawHudNumber(x, y, iFlags, pw->iClip, r, g, b, a, m_gHUD_anum_0[iNum]);
 			}
 			else
 			{
 				UnpackRGB(r, g, b, RGB_GREENISH);
-				gHUD.DrawHudNumber(x, y, iFlags, gWR.CountAmmo(pw->iAmmoType), r, g, b, a, m_gHUD_anum0[iIndex_Num]);
+				gHUD.DrawHudNumber(x, y, iFlags, gWR.CountAmmo(pw->iAmmoType), r, g, b, a, m_gHUD_anum_0[iNum]);
 			}
 		}
 
@@ -874,11 +857,11 @@ void CHudGeneral::DrawGreenHud(void)
 		{
 			if ((pw->iAmmo2Type != 0) && (gWR.CountAmmo(pw->iAmmo2Type) >= 0))
 			{
-				x = gHUD.m_iHudScaleWidth - (m_iANumWidth[iIndex_Num] * 3) - 32;
-				y = gHUD.m_iHudScaleHeight - m_iANumHeight[iIndex_Num] - 6;
+				x = gHUD.m_iHudScaleWidth - (m_iANumWidth[1] * 3) - 32;
+				y = gHUD.m_iHudScaleHeight - m_iANumHeight[1] - 6;
 
 				UnpackRGB(r, g, b, RGB_GREENISH);
-				gHUD.DrawHudNumber(x, y, iFlags, gWR.CountAmmo(pw->iAmmo2Type), r, g, b, a, m_gHUD_anum0[iIndex_Num]);
+				gHUD.DrawHudNumber(x, y, iFlags, gWR.CountAmmo(pw->iAmmo2Type), r, g, b, a, m_gHUD_anum_0[iNum]);
 			}
 		}
 	}
@@ -897,5 +880,5 @@ void CHudGeneral::DrawCShift(void)
 	b = (int)m_flScreenTint[2];
 	a = (int)m_flScreenTint[3];
 
-	FillRGBA(0, 0, gHUD.m_iHudScaleWidth, gHUD.m_iHudScaleHeight, r, g, b, a);
+	FillRGBA(0, 0, gHUD.m_iHudScaleWidth, gHUD.m_iHudScaleHeight, r, g, b, a, 0);
 }

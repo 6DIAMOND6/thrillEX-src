@@ -693,7 +693,7 @@ void EV_FireMP5( event_args_t *args )
 
 		if (cl_mp5_animskip != NULL && cl_mp5_animskip->value)
 		{
-			if (flNextAnimTime <= gEngfuncs.GetClientTime() || (flDeltaTime <= 0.0f))
+			if (flNextAnimTime <= gEngfuncs.GetClientTime() || ((flNextAnimTime - gEngfuncs.GetClientTime()) <= 0.0f))
 			{
 				gEngfuncs.pEventAPI->EV_WeaponAnimation( MP5_FIRE1 + gEngfuncs.pfnRandomLong(0,2), 2 );
 				flNextAnimTime = gEngfuncs.GetClientTime() + 0.2f;

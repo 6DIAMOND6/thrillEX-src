@@ -211,11 +211,15 @@ void CPython::PrimaryAttack()
 		return;
 	}
 
-#ifndef CLIENT_DLL
-	if (original_rof.value)
-#else
-	if (original_rof->value)
-#endif
+		int flags;
+
+		#if defined( CLIENT_WEAPONS )
+			flags = FEV_NOTHOST;
+		#else
+			flags = 0;
+		#endif
+
+	if (IsOriginalROFOn())
 	{
 		m_pPlayer->m_iWeaponVolume = LOUD_GUN_VOLUME;
 		m_pPlayer->m_iWeaponFlash = BRIGHT_GUN_FLASH;
@@ -235,15 +239,9 @@ void CPython::PrimaryAttack()
 		Vector vecDir;
 		vecDir = m_pPlayer->FireBulletsPlayer( 1, vecSrc, vecAiming, VECTOR_CONE_1DEGREES, 8192, BULLET_PLAYER_357, TRACER_NEVER, 0, m_pPlayer->pev, m_pPlayer->random_seed );
 
-		int flags;
 
-		#if defined( CLIENT_WEAPONS )
-			flags = FEV_NOTHOST;
-		#else
-			flags = 0;
-		#endif
 
-		PLAYBACK_EVENT_FULL( flags, m_pPlayer->edict(), m_usFirePython, 0.0, (float *)&g_vecZero, (float *)&g_vecZero, vecDir.x, vecDir.y, 0, 0, 0, 0 );
+		PLAYBACK_EVENT_FULL( flags, m_pPlayer->edict(), m_usFirePython, 0.0, (float *)&g_vecZero, (float *)&g_vecZero, vecDir.x, vecDir.y, 1, 0, 0, 0 );
 
 		if (!m_iClip && m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] <= 0)
 			// HEV suit - indicate out of ammo condition
@@ -255,7 +253,8 @@ void CPython::PrimaryAttack()
 	else
 	{
 		m_flAttackDelay = gpGlobals->time + 0.25;
-		SendWeaponAnim( PYTHON_FIRE1 );
+
+		PLAYBACK_EVENT_FULL( flags, m_pPlayer->edict(), m_usFirePython, 0.0, (float *)&g_vecZero, (float *)&g_vecZero, 0.0, 0.0, 0, 0, 0, 0 );
 		m_flNextPrimaryAttack = 1.35;
 	}
 
@@ -365,9 +364,9 @@ void CPython::ItemPostFrame( void )
 {
 
 #ifndef CLIENT_DLL
-	if ( m_flAttackDelay && !original_rof.value )
+	if ( m_flAttackDelay && !IsOriginalROFOn() )
 #else
-	if ( m_flAttackDelay && !original_rof->value )
+	if ( m_flAttackDelay && !IsOriginalROFOn() )
 #endif
 	{
 		UpdateSpot();
@@ -392,7 +391,7 @@ void CPython::ItemPostFrame( void )
 			Vector vecAiming = m_pPlayer->GetAutoaimVector( AUTOAIM_10DEGREES );
 
 			Vector vecDir;
-			vecDir = m_pPlayer->FireBulletsPlayer( 1, vecSrc, vecAiming, VECTOR_CONE_1DEGREES, 8192, BULLET_PLAYER_357, TRACER_NEVER, 0, m_pPlayer->pev, m_pPlayer->random_seed );
+			vecDir = m_pPlayer->FireBulletsPlayer( 1, vecSrc, vecAiming, VECTOR_CONE_1DEGREES, 8192, BULLET_PLAYER_357, TRACER_NEVER, 0, m_pPlayer->pev, m_pPlayer->random_seed, 1);
 
 			int flags;
 		#if defined( CLIENT_WEAPONS )
@@ -400,8 +399,17 @@ void CPython::ItemPostFrame( void )
 		#else
 			flags = 0;
 		#endif
+			m_pPlayer->pev->punchangle.x = -10.0f;
 
-			PLAYBACK_EVENT_FULL( flags, m_pPlayer->edict(), m_usFirePython, 0.0, (float *)&g_vecZero, (float *)&g_vecZero, vecDir.x, vecDir.y, 0, 0, 0, 0 );
+			switch( RANDOM_LONG(0,1) )
+		{
+		case 0:
+			EMIT_SOUND(ENT(pev), CHAN_WEAPON, "weapons/357_shot1.wav", RANDOM_FLOAT(0.8,0.9), ATTN_NORM);
+			break;
+		case 1:
+			EMIT_SOUND(ENT(pev), CHAN_WEAPON, "weapons/357_shot2.wav", RANDOM_FLOAT(0.8,0.9), ATTN_NORM);
+			break;
+		}
 
 			if (!m_iClip && m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] <= 0)
 				// HEV suit - indicate out of ammo condition
@@ -409,8 +417,6 @@ void CPython::ItemPostFrame( void )
 		}
 	}
 
-//	if ( !m_pPlayer->m_inHolster )
-//		UpdateSpot();
 
 	CBasePlayerWeapon::ItemPostFrame();
 }

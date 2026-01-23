@@ -1555,7 +1555,8 @@ void CBaseMonster :: TraceAttack( entvars_t *pevAttacker, float flDamage, Vector
 			UTIL_BloodStream( vecBloodOffset, UTIL_RandomBloodVector(), BloodColor(), RANDOM_LONG( 80, 150 ) );
 
 			if ( knockback.value && !FClassnameIs(ENT(pev), "monster_gargantua")
-				&& (m_MonsterState != MONSTERSTATE_SCRIPT) && !FBitSet(pev->spawnflags, SF_MONSTER_WAIT_FOR_SCRIPT) )
+				&& (m_MonsterState != MONSTERSTATE_SCRIPT) && !FBitSet(pev->spawnflags, SF_MONSTER_WAIT_FOR_SCRIPT) 
+				&& pev->movetype != MOVETYPE_NONE && pev->movetype != MOVETYPE_FLY)
 			{
 				pev->gravity = 0.5f; // Make bodies a little more floatier
 				pev->movetype = MOVETYPE_TOSS;

@@ -798,7 +798,7 @@ int CHudAmmo::MsgFunc_CurWeapon(const char *pszName, int iSize, void *pbuf )
 
 	SetCrosshair(m_pWeapon->hCrosshair, m_pWeapon->rcCrosshair, 255, 255, 255);
 
-	gHUD.m_GeneralHud.m_iAmmoFade = 255.0f; //!!!
+	gHUD.m_GeneralHud.m_iAmmoFade = 512;
 	m_iFlags |= HUD_ACTIVE;
 	
 	return 1;
@@ -1128,6 +1128,9 @@ int CHudAmmo::DrawWList(float flTime)
 		y = 4;
 	}
 
+	if (gHUD.m_GeneralHud.m_pCvarHudStyle->value == 1)
+		x -= 96;
+
 	for (j = 0; j < MAX_HUD_ITEMS; j++)
 	{
 		if (!shouldDraw || !hud_items[j])
@@ -1201,7 +1204,8 @@ int CHudAmmo::DrawWList(float flTime)
 
 	x = 10; //!!!
 	y = 10; //!!!
-	
+		if (gHUD.m_GeneralHud.m_pCvarHudStyle->value == 1)
+		x += 72;
 	// Ensure that there are available choices in the active slot
 	if ( iActiveSlot > 0 )
 	{
@@ -1247,6 +1251,9 @@ int CHudAmmo::DrawWList(float flTime)
 
 	a = 128; //!!!
 	x = 10;
+
+	if (gHUD.m_GeneralHud.m_pCvarHudStyle->value == 1)
+		x += 72;
 
 	// Draw all of the buckets
 	for (i = 0; i < MAX_WEAPON_SLOTS; i++)
@@ -1400,7 +1407,7 @@ int CHudAmmo::DrawAlphaWList(float flTime)
 	// SERECKY JAN-18-26: HACK FOR ALPHA HUD
 
 	if (gHUD.m_GeneralHud.m_pCvarHudStyle->value == 1)
-		y = 8;
+		x -= 64;
 
 	for (j = 0; j < MAX_HUD_ITEMS; j++)
 	{

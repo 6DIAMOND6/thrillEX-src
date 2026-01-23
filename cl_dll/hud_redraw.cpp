@@ -135,6 +135,39 @@ void CHud::Think(void)
 	Bench_CheckStart();
 }
 
+extern cvar_t* cl_holster;
+extern cvar_t* cl_ladder_mode;
+extern cvar_t* cl_original_rof;
+extern cvar_t* cl_knockback;
+extern cvar_t* cl_headcrab_dmg;
+
+extern int g_iHolster;
+extern int g_iLadderMode;
+extern int g_iRof;
+extern int g_iKnockback;
+extern int g_iHeadcrabDmg;
+
+void Sync_CVARS(cvar_t* pCvar, int* pValue)
+{
+	if (!pCvar)
+		return;
+	if (!pValue)
+		return;
+
+	int value = floor(pCvar->value + 0.1f);
+
+	if (*pValue != value)
+	{
+		gEngfuncs.pfnClientCmd(va("sv_%s %.2f", pCvar->name, pCvar->value));
+		*pValue = value;
+
+	}
+	else
+	{
+		//gEngfuncs.Con_Printf( "\"%s\" is in sync with server\n", pCvar->name );
+	}
+}
+
 // Redraw
 // step through the local data,  placing the appropriate graphics & text as appropriate
 // returns 1 if they've changed, 0 otherwise
@@ -261,6 +294,11 @@ int CHud :: Redraw( float flTime, int intermission )
 		SPR_DrawAdditive( 0, mx, my, NULL );
 	}
 	*/
+Sync_CVARS(cl_holster, &g_iHolster);
+Sync_CVARS(cl_ladder_mode, &g_iLadderMode);
+Sync_CVARS(cl_original_rof, &g_iRof);
+Sync_CVARS(cl_knockback, &g_iKnockback);
+Sync_CVARS(cl_headcrab_dmg, &g_iHeadcrabDmg);
 
 	return 1;
 }
@@ -302,9 +340,11 @@ int CHud :: DrawHudStringReverse( int xpos, int ypos, int iMinX, char *szString,
 
 int CHud :: DrawHudNumber( int x, int y, int iFlags, int iNumber, int r, int g, int b, int a, int iSprite )
 {
-	int iWidth = GetSpriteRect(iSprite).right - GetSpriteRect(iSprite).left;
 	int iHoles = (iFlags & DHN_HOLES) ? 1 : 0;
 	int r1, g1, b1, k;
+	int iWidth;
+
+	iWidth = GetSpriteRect(iSprite).right - GetSpriteRect(iSprite).left;
 
 	r1 = r; g1 = g; b1 = b;
 	a = (iHoles) ? 255 : a;
@@ -327,15 +367,16 @@ int CHud :: DrawHudNumber( int x, int y, int iFlags, int iNumber, int r, int g, 
 
 			x += iWidth;
 		}
-		else if ((iFlags & DHN_3DIGITS) && !(iFlags & DHN_NOLZERO))
+		else if ((iFlags & DHN_3DIGITS))
 		{
-			SPR_Set(GetSprite(iSprite), r1, g1, b1 );
-
-			if (iHoles)
-				SPR_DrawHoles( 0, x, y, &GetSpriteRect(iSprite));
-			else
-				SPR_DrawAdditive( 0, x, y, &GetSpriteRect(iSprite));
-
+			if (!(iFlags & DHN_NOLZERO))
+			{
+				SPR_Set(GetSprite(iSprite), r1, g1, b1);
+				if (iHoles)
+					SPR_DrawHoles(0, x, y, &GetSpriteRect(iSprite));
+				else
+					SPR_DrawAdditive(0, x, y, &GetSpriteRect(iSprite));
+			}
 			x += iWidth;
 		}
 
@@ -343,7 +384,7 @@ int CHud :: DrawHudNumber( int x, int y, int iFlags, int iNumber, int r, int g, 
 		if (iNumber >= 10)
 		{
 			k = (iNumber % 100)/10;
-			SPR_Set(GetSprite(iSprite + k), r, g, b );
+			SPR_Set(GetSprite(iSprite + k), r, g, b);
 
 			if (iHoles)
 				SPR_DrawHoles( 0, x, y, &GetSpriteRect(iSprite + k));
@@ -352,21 +393,22 @@ int CHud :: DrawHudNumber( int x, int y, int iFlags, int iNumber, int r, int g, 
 
 			x += iWidth;
 		}
-		else if ((iFlags & (DHN_3DIGITS | DHN_2DIGITS)) && !(iFlags & DHN_NOLZERO))
+		else if ((iFlags & (DHN_3DIGITS | DHN_2DIGITS)))
 		{
-			SPR_Set(GetSprite(iSprite), r1, g1, b1 );
-
-			if (iHoles)
-				SPR_DrawHoles( 0, x, y, &GetSpriteRect(iSprite));
-			else
-				SPR_DrawAdditive( 0, x, y, &GetSpriteRect(iSprite));
-
+			if (!(iFlags & DHN_NOLZERO))
+			{
+				SPR_Set(GetSprite(iSprite), r1, g1, b1);
+				if (iHoles)
+					SPR_DrawHoles(0, x, y, &GetSpriteRect(iSprite));
+				else
+					SPR_DrawAdditive(0, x, y, &GetSpriteRect(iSprite));
+			}
 			x += iWidth;
 		}
 
 		// SPR_Draw ones
 		k = iNumber % 10;
-		SPR_Set(GetSprite(iSprite + k), r, g, b );
+		SPR_Set(GetSprite(iSprite + k), r, g, b);
 
 		if (iHoles)
 			SPR_DrawHoles( 0, x, y, &GetSpriteRect(iSprite + k));
@@ -377,35 +419,37 @@ int CHud :: DrawHudNumber( int x, int y, int iFlags, int iNumber, int r, int g, 
 	} 
 	else if (iFlags & DHN_DRAWZERO) 
 	{
-		SPR_Set(GetSprite(iSprite), r1, g1, b1 );
+		SPR_Set(GetSprite(iSprite), r1, g1, b1);
 
 		// SPR_Draw 100's
-		if ((iFlags & DHN_3DIGITS) && !(iFlags & DHN_NOLZERO))
+		if ((iFlags & DHN_3DIGITS))
 		{
-			if (iHoles)
-				SPR_DrawHoles( 0, x, y, &GetSpriteRect(iSprite));
-			else
-				SPR_DrawAdditive( 0, x, y, &GetSpriteRect(iSprite));
-
+			if (!(iFlags & DHN_NOLZERO))
+			{
+				if (iHoles)
+					SPR_DrawHoles(0, x, y, &GetSpriteRect(iSprite));
+				else
+					SPR_DrawAdditive(0, x, y, &GetSpriteRect(iSprite));
+			}
 			x += iWidth;
 		}
 
-		if ((iFlags & (DHN_3DIGITS | DHN_2DIGITS)) && !(iFlags & DHN_NOLZERO))
+		if ((iFlags & (DHN_3DIGITS | DHN_2DIGITS)))
 		{
-			if (iHoles)
-				SPR_DrawHoles( 0, x, y, &GetSpriteRect(iSprite));
-			else
-				SPR_DrawAdditive( 0, x, y, &GetSpriteRect(iSprite));
-
+			if (!(iFlags & DHN_NOLZERO))
+			{
+				if (iHoles)
+					SPR_DrawHoles(0, x, y, &GetSpriteRect(iSprite));
+				else
+					SPR_DrawAdditive(0, x, y, &GetSpriteRect(iSprite));
+			}
 			x += iWidth;
 		}
-
 		// SPR_Draw ones
 		if (iHoles)
 			SPR_DrawHoles( 0, x, y, &GetSpriteRect(iSprite));
 		else
 			SPR_DrawAdditive( 0, x, y, &GetSpriteRect(iSprite));
-
 		x += iWidth;
 	}
 

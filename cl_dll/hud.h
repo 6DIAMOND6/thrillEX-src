@@ -532,7 +532,6 @@ private:
 //
 //-----------------------------------------------------
 //
-
 class CHudGeneral : public CHudBase
 {
 public:
@@ -557,35 +556,28 @@ public:
 	int			m_iHealthFade;
 	int			m_iAmmoFade;
 private:
+	int			m_hArmor;
+	int			m_hSBar[4];
+	int			m_hFace[5][2];
 
-	// Prelim and Green Hud only
-	HSPRITE		m_hDivider[2];
-	HSPRITE		m_hBatEmpty[2];
-	HSPRITE		m_hBatFull[2];
-
-	HSPRITE		m_hSBar[2];		// 0 - SBAR 1 - IBAR
-	HSPRITE		m_hFace[5][2];	// [Face corresponding to DMG][Pain status]
-	HSPRITE		m_hArmor;		// Armor sprite
-
-	// 0 - Bottom left, 1 - Bottom Right, 2 - Middle Right, 3 - Top Left
 	HSPRITE		m_hAlphaBars[4];
-	HSPRITE		m_hAlphaTints[4]; 
+	HSPRITE		m_hAlphaTints[4];
 	int			m_iAlphaWidth[4];
 	int			m_iAlphaHeight[4];
 
-	// 0 - Quake, 1 - Alpha, 2 - Prelim, 3 - Green
-	wrect_t*	m_rcBatFull;
-	int			m_iBatFullWidth;
-	int			m_iBatHeight;			
+	int			m_gHUD_num_0[4];
+	int			m_gHUD_anum_0[4];
+	int			m_gHUD_battery_empty[2];
+	int			m_gHUD_battery_full[2];
+	int			m_gHUD_divider[2];
+
 	int			m_iBatWidth;
+	int			m_iBatHeight;
+	int			m_iNumHeight[2];
+	int			m_iANumWidth[2];
+	int			m_iANumHeight[2];
 
-	int			m_gHUD_num0[4];
-	int			m_iNumWidth[4];
-	int			m_iNumHeight[4];
-
-	int			m_gHUD_anum0[4];
-	int			m_iANumWidth[4];
-	int			m_iANumHeight[4];
+	wrect_t		*m_rcBatFull;
 };
 
 //

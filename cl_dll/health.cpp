@@ -75,7 +75,7 @@ int CHudHealth::Init(void)
 	m_fAttackFront = m_fAttackRear = m_fAttackRight = m_fAttackLeft = 0;
 	giDmgHeight = 0;
 	giDmgWidth = 0;
-	m_pCvarPainFade = CVAR_CREATE("hud_dmgfade", "0", FCVAR_ARCHIVE );
+	m_pCvarPainFade = CVAR_CREATE("hud_dmgfade", "1", FCVAR_ARCHIVE );
 
 	memset(m_dmg, 0, sizeof(DAMAGE_IMAGE) * NUM_DMG_TYPES);
 
@@ -130,7 +130,7 @@ int CHudHealth:: MsgFunc_Health(const char *pszName,  int iSize, void *pbuf )
 	// Only update the fade if we've changed health
 	if (x != m_iHealth)
 	{
-		gHUD.m_GeneralHud.m_iHealthFade = 200;
+		gHUD.m_GeneralHud.m_iHealthFade = 255;
 		m_iHealth = x;
 	}
 
@@ -146,7 +146,7 @@ int CHudHealth:: MsgFunc_Battery(const char *pszName,  int iSize, void *pbuf )
 
 	if ( x != m_iBat )
 	{
-	//	m_fFade = FADE_TIME;
+		gHUD.m_GeneralHud.m_iHealthFade = 255;
 		m_iBat = x;
 	}
 

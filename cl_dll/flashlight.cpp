@@ -58,9 +58,9 @@ void CHudFlashlight::Reset(void)
 int CHudFlashlight::VidInit(void)
 {
 	int HUD_flash_on = gHUD.GetSpriteIndex( "flash_on" );
-	int HUD_flash_off = gHUD.GetSpriteIndex( "flash_off" );
-
 	int HUD_flash_on_a = gHUD.GetSpriteIndex( "a_flash_on" );
+
+	int HUD_flash_off = gHUD.GetSpriteIndex( "flash_off" );
 	int HUD_flash_off_a = gHUD.GetSpriteIndex( "a_flash_off" );
 
 	m_hSpriteOn[0] = gHUD.GetSprite(HUD_flash_on);
@@ -132,14 +132,16 @@ int CHudFlashlight::Draw(float flTime)
 		{
 			SPR_Set( m_hSpriteOn[1], 255, 255, 255 );
 			SPR_DrawHoles( 0, m_iCoord[0], m_iCoord[1], NULL );
+			UnpackRGB(r,g,b, RGB_GREENISH);
+			FillRGBA(x, y, iWidth, iHeight, r, g, b, 96);
 		}
 		else
 		{
 			SPR_Set( m_hSpriteOn[0], r, g, b );
-			SPR_DrawHoles( 0, m_iCoord[0], m_iCoord[1], m_prcOn );
+			SPR_DrawAdditive( 0, m_iCoord[0], m_iCoord[1], m_prcOn );
+			UnpackRGB(r,g,b, RGB_GREENISH);
+			FillRGBA(x, y, iWidth, iHeight, r, g, b, 64);
 		}
-		UnpackRGB(r,g,b, RGB_GREENISH);
-		FillRGBA(x, y, iWidth, iHeight, r, g, b, 96);
 	}
 	else if ( m_fCanDraw )
 	{
@@ -147,14 +149,16 @@ int CHudFlashlight::Draw(float flTime)
 		{
 			SPR_Set( m_hSpriteOff[1], 255, 255, 255 );
 			SPR_DrawHoles( 0, m_iCoord[0], m_iCoord[1], NULL );
+			UnpackRGB(r,g,b, RGB_GREENISH);
+			FillRGBA(x, y, iWidth, iHeight, r, g, b, 96);
 		}
 		else
 		{
 			SPR_Set( m_hSpriteOff[0], r, g, b );
-			SPR_DrawHoles( 0, m_iCoord[0], m_iCoord[1], m_prcOn );
+			SPR_DrawAdditive( 0, m_iCoord[0], m_iCoord[1], m_prcOff );
+			UnpackRGB(r,g,b, RGB_GREENISH);
+			FillRGBA(x, y, iWidth, iHeight, r, g, b, 64);
 		}
-		UnpackRGB(r,g,b, RGB_GREENISH);
-		FillRGBA(x, y, iWidth, iHeight, r, g, b, 96);
 	}
 
 	return 1;

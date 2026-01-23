@@ -38,7 +38,7 @@ RSC=rc.exe
 # PROP BASE Target_Dir ""
 # PROP Use_MFC 0
 # PROP Use_Debug_Libraries 0
-# PROP Output_Dir ".\Releasehl"
+# PROP Output_Dir "C:\Program Files (x86)\Steam\steamapps\common\Half-Life\thrill\dlls"
 # PROP Intermediate_Dir ".\Releasehl"
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
@@ -56,9 +56,9 @@ LINK32=link.exe
 # ADD LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib /nologo /subsystem:windows /dll /map /debug /machine:I386 /def:".\hl.def"
 # SUBTRACT LINK32 /profile
 # Begin Custom Build
-InputDir=.\Releasehl
+InputDir=\Program Files (x86)\Steam\steamapps\common\Half-Life\thrill\dlls
 ProjDir=.
-InputPath=.\Releasehl\hl.dll
+InputPath=\Program Files (x86)\Steam\steamapps\common\Half-Life\thrill\dlls\hl.dll
 InputName=hl
 SOURCE="$(InputPath)"
 

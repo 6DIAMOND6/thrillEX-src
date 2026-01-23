@@ -38,7 +38,7 @@ RSC=rc.exe
 # PROP BASE Target_Dir ""
 # PROP Use_MFC 0
 # PROP Use_Debug_Libraries 0
-# PROP Output_Dir ".\Release"
+# PROP Output_Dir "C:\Program Files (x86)\Steam\steamapps\common\Half-Life\thrill\cl_dlls"
 # PROP Intermediate_Dir ".\Release"
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""

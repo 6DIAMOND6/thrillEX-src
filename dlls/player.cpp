@@ -69,7 +69,9 @@ extern CGraph	WorldGraph;
 #define	FLASH_CHARGE_TIME	 0.2 // 100 units/20 seconds  (seconds per unit)
 
 #define OLD_SWITCH = 0
-
+extern cvar_t holster;
+extern cvar_t original_rof;
+extern cvar_t ladder_mode;
 #define PLAYER_REVIVED_HEALTH	15
 
 // Global Savedata for player
@@ -200,6 +202,7 @@ int gmsgAntidoteCount = 0;
 int gmsgAdrenalineCount = 0;
 int gmsgAirtank	= 0;
 int gmsgLongJumpBat	= 0;
+int gmsgRof;
 
 int gmsgStatusText = 0;
 int gmsgStatusValue = 0; 
@@ -256,6 +259,7 @@ void LinkUserMessages( void )
 
 	gmsgStatusText = REG_USER_MSG("StatusText", -1);
 	gmsgStatusValue = REG_USER_MSG("StatusValue", 3); 
+	gmsgRof = REG_USER_MSG("RateOfFire", 1); 
 
 }
 
@@ -485,6 +489,22 @@ int CBasePlayer :: TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, 
 	float flBonus;
 	float flHealthPrev = pev->health;
 
+Vector	vecDir;
+	vecDir = Vector( 0, 0, 0 );
+	if (!FNullEnt( pevInflictor ))
+	{
+		CBaseEntity *pInflictor = CBaseEntity :: Instance( pevInflictor );
+		if (pInflictor)
+		{
+			vecDir = ( pInflictor->Center() - Vector ( 0, 0, 10 ) - Center() ).Normalize();
+			vecDir = g_vecAttackDir = vecDir.Normalize();
+		}
+	}
+	// if this is a player, move him around!
+	if ( ( !FNullEnt( pevInflictor ) ) && (pev->movetype == MOVETYPE_WALK) && (!pevAttacker || pevAttacker->solid != SOLID_TRIGGER) )
+	{
+		pev->velocity = pev->velocity + vecDir * -DamageForce( flDamage );
+	}
 	flBonus = ARMOR_BONUS;
 	flRatio = ARMOR_RATIO;
 
@@ -3304,7 +3324,9 @@ void CBasePlayer::Spawn( void )
 	m_fWeapon = FALSE;
 	m_pClientActiveItem = NULL;
 	m_iClientBattery = -1;
-
+	m_iLadderMode = -1;
+	m_iClientROF = -1;
+g_engfuncs.pfnSetPhysicsKeyValue( edict(), "lm", UTIL_VarArgs("%d", (int)ladder_mode.value) );
 	// reset all ammo values to 0
 	for ( int i = 0; i < MAX_AMMO_SLOTS; i++ )
 	{
@@ -3492,6 +3514,15 @@ void CBasePlayer::SelectNextItem( int iItem )
 	}
 	
 	m_pActiveItem = pItem;
+
+	if (!holster.value)
+	{
+		if (m_pActiveItem)
+		{
+			m_pActiveItem->Deploy( );
+			m_pActiveItem->UpdateItemInfo( );
+		}
+	}
 }
 
 void CBasePlayer::SelectItem(const char *pstr)
@@ -3528,6 +3559,23 @@ void CBasePlayer::SelectItem(const char *pstr)
 
 	ResetAutoaim( );
 
+	if (!holster.value)
+	{
+		// FIX, this needs to queue them up and delay
+		if (m_pActiveItem)
+			m_pActiveItem->Holster( );
+		
+		m_pLastItem = m_pActiveItem;
+		m_pActiveItem = pItem;
+
+		if (m_pActiveItem)
+		{
+			m_pActiveItem->Deploy( );
+			m_pActiveItem->UpdateItemInfo( );
+		}
+		return;
+	}
+
 	if (m_pActiveItem && !m_inHolster)
 	{
 		if ( !m_pActiveItem->CanHolster() )
@@ -3547,7 +3595,8 @@ void CBasePlayer::SelectItem(const char *pstr)
 	if (m_pActiveItem)
 	{
 		m_pActiveItem->UpdateItemInfo( );
-	}	
+	}
+	
 }
 
 
@@ -3576,10 +3625,17 @@ void CBasePlayer::SelectLastItem(void)
 	}
 
 	CBasePlayerItem *pTemp = m_pActiveItem;
-	m_pNextActiveItem = m_pLastItem;
+	if (!holster.value)
+	{
+		m_pActiveItem = m_pLastItem;
+		m_pActiveItem->Deploy( );
+		m_pActiveItem->UpdateItemInfo( );
+	}
+	else
+	{
+		m_pNextActiveItem = m_pLastItem;
+	}
 	m_pLastItem = pTemp;
-//	m_pActiveItem->Deploy( );
-//	m_pActiveItem->UpdateItemInfo( );
 }
 
 //==============================================
@@ -3753,7 +3809,7 @@ CBaseEntity *FindEntityForward( CBaseEntity *pMe )
 
 BOOL CBasePlayer :: FlashlightIsOn( void )
 {
-	return FBitSet(pev->effects, EF_DIMLIGHT);
+	return FBitSet(pev->effects, EF_DIMLIGHT_2);
 }
 
 
@@ -3767,7 +3823,7 @@ void CBasePlayer :: FlashlightTurnOn( void )
 	if ( (pev->weapons & (1<<WEAPON_SUIT)) )
 	{
 		EMIT_SOUND_DYN( ENT(pev), CHAN_WEAPON, SOUND_FLASHLIGHT_ON, 1.0, ATTN_NORM, 0, PITCH_NORM );
-		SetBits(pev->effects, EF_DIMLIGHT);
+		SetBits(pev->effects, EF_DIMLIGHT_2);
 		MESSAGE_BEGIN( MSG_ONE, gmsgFlashlight, NULL, pev );
 		WRITE_BYTE(1);
 		WRITE_BYTE(m_iFlashBattery);
@@ -3782,7 +3838,7 @@ void CBasePlayer :: FlashlightTurnOn( void )
 void CBasePlayer :: FlashlightTurnOff( void )
 {
 	EMIT_SOUND_DYN( ENT(pev), CHAN_WEAPON, SOUND_FLASHLIGHT_OFF, 1.0, ATTN_NORM, 0, PITCH_NORM );
-    ClearBits(pev->effects, EF_DIMLIGHT);
+    ClearBits(pev->effects, EF_DIMLIGHT_2);
 	MESSAGE_BEGIN( MSG_ONE, gmsgFlashlight, NULL, pev );
 	WRITE_BYTE(0);
 	WRITE_BYTE(m_iFlashBattery);
@@ -3804,7 +3860,8 @@ Reset stuff so that the state is transmitted.
 void CBasePlayer :: ForceClientDllUpdate( void )
 {
 	m_iClientHealth  = -1;
-	m_iClientBattery = -1;
+	m_iClientBattery = -1;	m_iLadderMode = -1;
+	m_iClientROF = -1;
 	m_iTrain |= TRAIN_NEW;  // Force new train message.
 	m_fWeapon = FALSE;          // Force weapon send
 	m_fKnownItem = FALSE;    // Force weaponinit messages.
@@ -4418,7 +4475,16 @@ void CBasePlayer::ItemPostFrame()
 
 	ImpulseCommands();
 
-	if ( (m_pNextActiveItem || m_inHolster) && gpGlobals->time >= m_fHolsterWaitTime )
+
+	if (m_pActiveItem && !holster.value)
+	{
+		m_pActiveItem->ItemPostFrame( );
+		m_inHolster = FALSE;
+		m_pNextActiveItem = NULL;
+		return;
+	}
+
+	if ( (m_pNextActiveItem || m_inHolster) && (gpGlobals->time >= m_fHolsterWaitTime || !holster.value) )
 	{
 		m_pActiveItem = m_pNextActiveItem;
 		m_pActiveItem->Deploy( );
@@ -4430,7 +4496,7 @@ void CBasePlayer::ItemPostFrame()
 	if (!m_pActiveItem)
 		return;
 
-	if ( gpGlobals->time > m_fHolsterWaitTime + 0.5 )	// UNDONE: this is ugly
+	if ( gpGlobals->time > m_fHolsterWaitTime + 0.5 || !holster.value )	// UNDONE: this is ugly
 		m_pActiveItem->ItemPostFrame( );
 }
 
@@ -4554,6 +4620,22 @@ void CBasePlayer :: UpdateClientData( void )
 		MESSAGE_END();
 		gDisplayTitle = 0;
 	}
+
+	if (original_rof.value != m_iClientROF)
+	{
+
+
+		MESSAGE_BEGIN( MSG_ONE, gmsgRof, NULL, pev );
+		WRITE_BYTE( original_rof.value );
+		MESSAGE_END();
+		m_iClientROF = original_rof.value;
+	}
+
+if (ladder_mode.value != m_iLadderMode)
+{
+g_engfuncs.pfnSetPhysicsKeyValue( edict(), "lm", UTIL_VarArgs("%d", (int)ladder_mode.value) );
+	m_iLadderMode = ladder_mode.value;
+}
 
 	if (pev->health != m_iClientHealth)
 	{
@@ -4746,6 +4828,7 @@ void CBasePlayer :: UpdateClientData( void )
 				WRITE_BYTE(II.iPosition);				// byte		bucket pos
 				WRITE_BYTE(II.iId);						// byte		id (bit index into pev->weapons)
 				WRITE_BYTE(II.iFlags);					// byte		Flags
+				WRITE_BYTE(II.iMaxClip);
 			MESSAGE_END();
 		}
 	}
@@ -5239,65 +5322,68 @@ BOOL CBasePlayer::HasNamedPlayerItem( const char *pszItemName )
 //=========================================================
 BOOL CBasePlayer :: SwitchWeapon( CBasePlayerItem *pWeapon ) 
 {
-#if 0
-	if ( !pWeapon->CanDeploy() )
+	if (!holster.value)
 	{
-		return FALSE;
-	}
-	
-	ResetAutoaim( );
-	
-	if (m_pActiveItem)
-	{
-		m_pActiveItem->Holster( );
-	}
-
-	m_pActiveItem = pWeapon;
-	pWeapon->Deploy( );
-
-	return TRUE;
-#else
-	if ( m_pActiveItem != NULL )
-	{
-		CBasePlayerWeapon* newWpn =  (CBasePlayerWeapon*)m_pActiveItem->GetWeaponPtr();
-		
-		if( newWpn->m_fInReload || newWpn->m_fInSpecialReload )
+		if ( !pWeapon->CanDeploy() )
 		{
 			return FALSE;
 		}
-	}
-
-	ResetAutoaim( );
-
-	if (!pWeapon->CanDeploy())
-	{
-		return FALSE;
-	}
-
-	if ( m_inHolster )
-	{
-		return FALSE;
-	}
-
-	if (m_pActiveItem) 
-	{
-		if (m_pActiveItem->CanHolster()) 
+		
+		ResetAutoaim( );
+		
+		if (m_pActiveItem)
 		{
-			m_inHolster = TRUE;
-			m_pActiveItem->Holster();
-			m_pNextActiveItem = pWeapon;
-
-			m_fHolsterWaitTime = gpGlobals->time + 1.0;
+			m_pActiveItem->Holster( );
 		}
+
+		m_pActiveItem = pWeapon;
+		pWeapon->Deploy( );
+
+		return TRUE;
 	}
 	else
 	{
-		m_pActiveItem = pWeapon;
-		m_pActiveItem->Deploy();
-	}
+		if ( m_pActiveItem != NULL )
+		{
+			CBasePlayerWeapon* newWpn =  (CBasePlayerWeapon*)m_pActiveItem->GetWeaponPtr();
+			
+			if( newWpn->m_fInReload || newWpn->m_fInSpecialReload )
+			{
+				return FALSE;
+			}
+		}
 
-	return TRUE;
-#endif
+		ResetAutoaim( );
+
+		if (!pWeapon->CanDeploy())
+		{
+			return FALSE;
+		}
+
+		if ( m_inHolster )
+		{
+			return FALSE;
+		}
+
+		if (m_pActiveItem) 
+		{
+			if (m_pActiveItem->CanHolster()) 
+			{
+				m_inHolster = TRUE;
+				m_pActiveItem->Holster();
+				m_pNextActiveItem = pWeapon;
+
+				m_fHolsterWaitTime = gpGlobals->time + 1.0;
+			}
+		}
+		else
+		{
+			m_pActiveItem = pWeapon;
+			m_pActiveItem->Deploy();
+		}
+
+		return TRUE;
+	}
 }
 
 //=========================================================

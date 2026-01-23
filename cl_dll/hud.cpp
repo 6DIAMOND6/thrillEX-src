@@ -294,6 +294,17 @@ int __MsgFunc_RateOfFire(const char *pszName, int iSize, void *pbuf)
 {
 	return gHUD.MsgFunc_RateOfFire( pszName, iSize, pbuf );
 }
+cvar_t* cl_holster;
+cvar_t* cl_ladder_mode;
+cvar_t* cl_original_rof;
+cvar_t* cl_knockback;
+cvar_t* cl_headcrab_dmg;
+
+int g_iHolster;
+int g_iLadderMode;
+int g_iRof;
+int g_iKnockback;
+int g_iHeadcrabDmg;
 
 // This is called every time the DLL is loaded
 void CHud :: Init( void )
@@ -357,6 +368,12 @@ void CHud :: Init( void )
 	cl_mp5_animskip = gEngfuncs.pfnRegisterVariable ( "cl_mp5_animskip", "0", FCVAR_ARCHIVE );
 	hud_weaponhinter = gEngfuncs.pfnRegisterVariable ( "hud_weaponhinter", "1", FCVAR_ARCHIVE );
 	original_rof = gEngfuncs.pfnGetCvarPointer( "sv_original_rof" );
+
+cl_holster = gEngfuncs.pfnRegisterVariable ( "holster", "1", FCVAR_ARCHIVE );
+cl_ladder_mode = gEngfuncs.pfnRegisterVariable ( "ladder_mode", "1", FCVAR_ARCHIVE );
+cl_original_rof = gEngfuncs.pfnRegisterVariable ( "original_rof", "0", FCVAR_ARCHIVE );
+cl_knockback = gEngfuncs.pfnRegisterVariable ( "knockback", "1", FCVAR_ARCHIVE );
+cl_headcrab_dmg = gEngfuncs.pfnRegisterVariable ( "headcrab_dmg", "2", FCVAR_ARCHIVE );
 
 	m_pSpriteList = NULL;
 
@@ -550,6 +567,12 @@ void CHud :: VidInit( void )
 	m_StatusIcons.VidInit();
 	m_GeneralHud.VidInit();
 	GetClientVoiceMgr()->VidInit();
+
+ g_iHolster = -1;
+ g_iLadderMode = -1;
+ g_iRof = -1;
+ g_iKnockback = -1;
+ g_iHeadcrabDmg = -1;
 
 	// clear out TriAPI HUD's sprite
 	TRI_pModel = NULL;
